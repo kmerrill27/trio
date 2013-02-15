@@ -3,71 +3,78 @@
 # Trio! alpha-beta search
 # author: Kim Merrill
 
-minPlayer = 0
+minPlayer = -1
 maxPlayer = 1
 empty = -1
-
-def defaultFirstMove(state):
-	""" Return best possible first move for 3-row/3-attribute Trio game."""
-	# Note: alphaBeta will return this same first move, but requires several seconds of search time.
-	print "Using default first move."
-	return makeMove([4,7], state)
+maxDepth = 5
 
 def alphaBeta(state):
 	""" Run alpha-beta search on Trio state with cuttof depth of 5, alpha = -inf, and beta = inf. """
-	return alphaBetaSearch(state, 5, -float("inf"), float("inf"), 1)[1]
+	return alphaBetaSearch(state, maxDepth, -float("inf"), float("inf"), 1)[1]
 
 def alphaBetaSearch(state, depth, alpha, beta, player):
 	""" Return best found move and corresponding alpha/beta value. """
-	# Save best state found among children
-	bestState = state
+	bestMove = state
 	# If depth cutoff reached or is a ending state, return heuristic cost estimate.
-	if depth == 0 or isTerminal(state):
-		return [costEstimate(state, depth), state]
+	if state.gameOver():
+		# If command line option toggled, print states as found.
+		if state.isVerboseMode():
+			if player == maxPlayer:
+				winFor = "MIN"
+			else:
+				winFor = "MAX"
+			print "Winning state for " + winFor + " found in " + str(maxDepth-depth) + " move(s): " + state.render()
+		return [(depth+1)*100000*-player, state]
+	elif state.tieGame():
+		# If command line option toggled, print states as found.
+		if state.isVerboseMode():
+			print "Tie state found in " + str(maxDepth-depth) + " move(s): " + state.render()
+		return [(depth+1)*1000*-player, state]
+	elif depth == 0:
+		# Use static utility function to improve search time.
+		return [costEstimate(state, player), state]
 	if player == maxPlayer:
 		moves = expand(state)
 		nextMove = moves.next()
 		while nextMove != None:
 			nextState = makeMove(nextMove, state)
 			result = alphaBetaSearch(nextState, depth-1, alpha, beta, not player)
-			# If command line option toggled, print alpha and beta values.
-			if state.isVerboseMode():
-				print "Alpha (MAX): old=" + str(alpha) + ", found=" + str(result[0]) +", new=" + str(max(alpha, result[0]))
-				print "Beta (MAX): old=" + str(beta)
- 			if alpha < result[0]:
- 				# If current move is better than last best move, remember it.
-				alpha = result[0]
-				bestState = nextState
-			if beta <= alpha:
-				# Prune search tree.
+			if result[0] > alpha:
+				# If command line option toggled, print new alpha value.
 				if state.isVerboseMode():
-					print "Pruning (MAX)"
+					print "MAX: old alpha=" + str(alpha) + ", new alpha=" + str(result[0])
+				alpha = result[0]
+				# Save current best move.
+				bestMove = nextState
+			# Prune if searching farther down branch is nonproductive.
+			if beta <= alpha:
+				if state.isVerboseMode():
+					print "Pruning max."
 				break
-			# Evaluate next move.
+				# Check next move.
 			nextMove = moves.next()
-		return [alpha, bestState]
+		return [alpha, bestMove]
 	else:
 		moves = expand(state)
 		nextMove = moves.next()
 		while nextMove != None:
 			nextState = makeMove(nextMove, state)
 			result = alphaBetaSearch(nextState, depth-1, alpha, beta, not player)
-			# If command line option toggled, print alpha and beta values.
-			if state.isVerboseMode():
-				print "Alpha (MIN): " + str(alpha)
-				print "Beta (MIN): old=" + str(beta) +", found=" + str(result[0]) + " new=" + str(min(beta, result[0]))
-			if beta > result[0]:
-				# If current move is better than last best move, remember it.
-				beta = result[0]
-				bestState = nextState
-			if beta <= alpha:
-				# Prune search tree.
+			if result[0] < beta:
+				# If command line option toggled, print new beta value.
 				if state.isVerboseMode():
-					print "Pruning (MIN)"
+					print "MIN: old beta=" + str(beta) + ", new beta=" + str(result[0])
+				beta = result[0]
+				# Save current best move.
+				bestMove = nextState
+			# Prune if searching farther down branch is nonproductive.
+			if beta <= alpha:
+				if state.isVerboseMode():
+					print "Pruning min."
 				break
-			# Evaluate next move.
+			# Check next move.
 			nextMove = moves.next()
-		return [beta, bestState]
+		return [beta, bestMove]
 
 def makeMove(move, state):
 	""" Apply move to state and return resulting game state. """
@@ -80,15 +87,18 @@ def makeMove(move, state):
 
 def expand(state):
 	""" Return generator of all possible moves, which are [cell, piece] pairs. """
+	# Reverse list of unplaced pieces first to improve search time.
+	# Best moves are more likely to select pieces that are opposite current piece.
+	unplacedPieces = state.getUnplacedPieces()
+	unplacedPieces.reverse()
 	for cell in state.getUnoccupiedCells():
-		for piece in state.getUnplacedPieces():
-			if piece != state.getPieceToPlay():
-				yield [cell, piece]
+		if len(state.getUnplacedPieces()) == 1:
+			yield [cell, None]
+		else:
+			for piece in unplacedPieces:
+				if piece != state.getPieceToPlay():
+					yield [cell, piece]
 	yield None
-
-def isTerminal(state):
-	""" Return whether state is a game-ending state. """
-	return state.gameOver() or state.tieGame()
 
 def countRows(board, opponentPiece):
 	""" Return heuristic cost for rows of given board. """
@@ -110,10 +120,10 @@ def countRows(board, opponentPiece):
 		if commonOnes > 0 or commonZeroes != ((1<<len(board))-1):
 			if emptyCells == 1:
 				# Two pieces in row and attribute(s) in common with piece to be played.
-				cost += 300
+				cost += 200
         	elif emptyCells == 2:
         		# One piece in row and attribute(s) in common with piece to be played.
-        		cost -= 100
+        		cost -= 50
         emptyCells = 0
    	return cost
 
@@ -137,26 +147,20 @@ def countDiagonal(board, opponentPiece):
 	if commonOnes > 0 or commonZeroes != ((1<<len(board))-1):
 		if emptyCells == 1:
 			# Two pieces in diagonal and attribute(s) in common with piece to be played.
-			cost += 300
+			cost += 200
 		elif emptyCells == 2:
 			# One piece in diagonal and attribute(s) in common with piece to be played.
-			cost -= 100
+			cost -= 50
 	return cost
 
-def costEstimate(state, depth):
+def costEstimate(state, player):
 	""" Return heuristic cost for current state. """
-	cost = 0
-	if state.tieGame():
-		cost -= 5000
-	elif state.gameOver():
-		cost += 5000000
-	else:
-		board = state.board
-		transposed = zip(*board)
-		rev = list(board)
-		rev.reverse()
-		opponentPiece = state.getPieceToPlay()
-		# Evaluate board based on the current placed pieces and piece to be given to the opponent to play.
-		cost = countRows(board, opponentPiece) + countRows(transposed, opponentPiece) + countDiagonal(board, opponentPiece) + countDiagonal(rev, opponentPiece)
+	board = state.board
+	transposed = zip(*board)
+	rev = list(board)
+	rev.reverse()
+	opponentPiece = state.getPieceToPlay()
+	# Evaluate board based on the current placed pieces and piece to be given to the opponent to play.
+	cost = countRows(board, opponentPiece) + countRows(transposed, opponentPiece) + countDiagonal(board, opponentPiece) + countDiagonal(rev, opponentPiece)
 	# Weight by depth. A winning state that happens in the fewest moves is preferred.
-	return cost*(depth+1)
+	return -player*cost

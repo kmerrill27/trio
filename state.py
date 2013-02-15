@@ -4,11 +4,10 @@
 # author: Robert Keller, Kim Merrill
 
 from random import randrange
-from alphabeta import alphaBeta, defaultFirstMove
+from alphabeta import alphaBeta
 
 # A state is a rows x rows board with attributes attributes.
 # For now rows and attributes are as specified as constants
-# Can be changed by changing constants, but search will slow
 
 rows = 3
 attributes = 3
@@ -91,11 +90,7 @@ class State:
 
     def calculateNextMove(self):
         """ Determines best move. """
-        if self.getPieceToPlay() == 0 and self.rows == 3 and self.attributes == 3:
-            # Return default best start move instead of searching to improve runtime.
-            return defaultFirstMove(self)
-        else:
-            return alphaBeta(self)
+        return alphaBeta(self)
 
     def isUnoccupied(self, cell):
         """ Return whether given cell is occupied. """
