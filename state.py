@@ -17,8 +17,12 @@ interCellGap = " "
 
 class State:
 # state represents the board, next piece to be played, and other relevant info
-    def __init__(self, verboseMode):
+    def __init__(self, verboseMode, quartoMode):
         """ Construct a new board. """
+        global rows, attributes
+        if quartoMode:
+            rows = 4
+            attributes = 4
         self.rows = rows
         self.attributes = attributes
         self.pieces = pow(2, attributes)
@@ -32,10 +36,11 @@ class State:
         self.unoccupiedCells = range(self.cells)
         self.pieceToPlay = self.firstPiece
         self.verboseMode = verboseMode
+        self.quartoMode = quartoMode
 
     def copy(self):
         """ Make a copy of this State. """
-        newState = State(self.verboseMode)
+        newState = State(self.verboseMode, self.quartoMode)
         newState.unplayedPieces = list(self.unplayedPieces)
         newState.unoccupiedCells = list(self.unoccupiedCells)
         newState.pieceToPlay = self.pieceToPlay
@@ -103,6 +108,10 @@ class State:
     def isVerboseMode(self):
         """ Return whether command line option has been toggled. """
         return self.verboseMode
+
+    def isQuartoMode(self):
+        """ Return whether command line quarto option has been toggled. """
+        return self.quartoMode
 
     def render(self):
         """ Render this state as a string. """

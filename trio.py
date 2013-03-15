@@ -6,6 +6,8 @@ import sys
 from state import State
 
 # To toggle verbose mode (print out all explored states and alpha/beta values), use command line option "v".
+# To play QUARTO, use "quarto" command line option. For verbose quarto mode, use "quarto v."
+# Quarto relies heavily on utility function, only searching to depth of 3.
 
 messageComputersTurn     = "Computer's turn."
 messageComputerWins      = "Computer wins."
@@ -24,24 +26,31 @@ def main():
     """ Run the Trio! playing program. """
     print messageWelcome
     verboseMode = False
+    quartoMode = False
     args = sys.argv
     # If command line option "v," enter verbose mode.
     if len(args) == 2:
         if args[1] == "v":
-            print "Playing in verbose mode"
+            print "Playing in verbose mode."
             verboseMode = True
-        else:
-            print "Invalid argument(s) ignored"
-    playUntilExit(verboseMode)
+        elif args[1] == "quarto":
+            quartoMode = True
+            print "Playing in quarto mode."
+    elif len(args) == 3:
+        if args[1] == "quarto" and args[2] == "v":
+            verboseMode = True
+            quartoMode = True
+            print "Playing in verbose quarto mode."
+    playUntilExit(verboseMode, quartoMode)
 
-def playUntilExit(verboseMode):
+def playUntilExit(verboseMode, quartoMode):
     """ Play successive games until the user decides to stop. """
     while True:
         firstPlayer = getFirstPlayer()
         if firstPlayer == 0:
             print messageGoodbye    
             return
-        playTrio(firstPlayer, verboseMode)
+        playTrio(firstPlayer, verboseMode, quartoMode)
 
 def getFirstPlayer():
     """ Get the first player, or an indication to stop. """
@@ -56,9 +65,9 @@ def getFirstPlayer():
         else:
             print messageTryAgain
 
-def playTrio(firstPlayer, verboseMode):
+def playTrio(firstPlayer, verboseMode, quartoMode):
     """ Play the game, given first player, or stop. """
-    state = State(verboseMode)
+    state = State(verboseMode, quartoMode)
     if firstPlayer == userFirst:
         userTurn(state)
     elif firstPlayer == computerFirst:

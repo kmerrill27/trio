@@ -10,6 +10,9 @@ maxDepth = 5
 
 def alphaBeta(state):
 	""" Run alpha-beta search on Trio state with cuttof depth of 5, alpha = -inf, and beta = inf. """
+	global maxDepth
+	if state.isQuartoMode():
+		maxDepth = 3
 	return alphaBetaSearch(state, maxDepth, -float("inf"), float("inf"), 1)[1]
 
 def alphaBetaSearch(state, depth, alpha, beta, player):
